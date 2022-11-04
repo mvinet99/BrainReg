@@ -1,0 +1,7 @@
+nibabel==3.2.2
+Pillow==9.1.1
+numpy==1.23.0
+opencv-python==4.6.0.66
+matplotlib==3.5.2
+imageio==2.22.0
+mayavi==4.8.1
