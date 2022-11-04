@@ -27,7 +27,7 @@ def fluoro_get_electrode_coordinates(fluoro):
     dbs = np.array([922, 805])
     pin_tips = np.array([[ 542., 1019.],
                         [1399.,  539.]])
-    print('Ryan.py successfully executed.')
+    print('fluoro_segmentation.py successfully executed.')
     return {"ecog":coords,
     "dbs": dbs,
     "pin": pin_tips }

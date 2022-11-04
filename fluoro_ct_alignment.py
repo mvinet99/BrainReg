@@ -49,5 +49,5 @@ def project_to_2d(prect_data, postct_data, fluoro, pins_ct, coords_2d):
              [137.0, 76.0],
              [132.0, 77.0],
              [127.0, 78.0]])
-    print('Micah.py successfully executed.')
+    print('fluoro_ct_alignment.py successfully executed.')
     return coords

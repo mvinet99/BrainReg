@@ -24,5 +24,5 @@ def ct_get_landmarks(prect, postct):
 				[73.0, 73.03683471679688, 52.0],
 				[77.19986724853516, 71.0, 148.0],
 				[203.0, 149.6582489013672, 153.0]])
-	print('Tiger.py successfully executed.')
+	print('ct_segmentation.py successfully executed.')
 	return {"pin": pin, "lead": lead }
