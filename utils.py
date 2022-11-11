@@ -93,8 +93,41 @@ def procrustes(X, Y):
     # Align data
     Ya = alpha * (Y0 @ Q) + muX
 
-    return Ya, Q, muX, muY, alpha
-   
+    return Ya, Q, muX, muY, alpha 
+
+def naive_project(coord_list,points_hull):
+    """
+    Function to get the coordinates of 2d points on the 3d surface
+    
+    input: coord_list,points_hull
+    output: projected_coord_list
+    
+    Electrode_coord_list is a list of coordinates of the 
+    electrode on the fluoroscopic image. Coord_list is a 
+    list of coordinates of all the points on a hull.
+    For each set of electrode cooridnates in the 
+    electrode_coord_list, a ray perpendicular to the fluoroscopy
+    will be generated and the intersection of the ray with the
+    hull surface will be saved into the projected_coord_list.
+        
+    """
+    coord_list = coord_list.astype(int)
+    points_hull = points_hull.astype(int)
+    projected_coord_list = []
+    for i in range(len(coord_list)):
+        electrode_coord = coord_list[i]
+    
+        ray_point_list = []
+        start_point = electrode_coord
+        for i in reversed(range(int(np.min(points_hull)),int( np.max(points_hull)))):
+            ray_point_list.append([i, start_point[1], start_point[2]])
+        for i in range(len(ray_point_list)):
+            if ray_point_list[i] in points_hull.tolist():
+                projected_coord_list.append(ray_point_list[i])
+                break
+                
+    return projected_coord_list
+
 if __name__ =="__main__":
     import ex
     ex.hey()
