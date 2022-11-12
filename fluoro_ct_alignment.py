@@ -1,10 +1,11 @@
 import cv2
-from utils import rotate
+import imageio
+from PIL import Image
 import numpy as np
 """
 MICAH
 """
-def project_to_2d(prect_data, postct_data, fluoro, pins_ct, coords_2d):
+def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
     """
     Align fluoroscopy image with CT image 
     Args:
@@ -25,29 +26,63 @@ def project_to_2d(prect_data, postct_data, fluoro, pins_ct, coords_2d):
     Return:
        coords_aligned_2d float64 numpy array shape = (n,x,y) 
     """
-    ### project_to_2d
 
-    ## TODO: Find where do landmarks go once fluoro is resized
-    fluoro = cv2.resize(fluoro,(150,150))
-    fluoro = rotate(fluoro, 90)
+    # 1. Proprocess CT image(s) and pins coordinates
 
+    # For each CT electrode coordinate, rotate the coorresponding slices 270 degrees,
+    # and resize the rotated image to match the size of the fluoro image. 
+    # Repeat this transformation process for the pin coordinates.
+    sl_num = np.array([pins_ct[:,2]])
+    sl_resized = []
+    pins_ct2 = []
+    for i in range(len(pins_ct)-1):
+        # Transform CT images
+        sl = np.rot90(np.rot90(np.rot90(postct_data[:, :, int(sl_num[0,i])])))
+        sl2 = cv2.resize(sl,[fluoro.shape[0],fluoro.shape[1]])
+        sl_resized.append(sl2)
+    
+        # Transform CT pin coordinates
+        refArray = np.zeros([256,256])
+        refArray[int(pins_ct[i,0]),int(pins_ct[i,1])] = 1e8
+        refArray2 = np.rot90(np.rot90(np.rot90(refArray)))
+        refArray3 = cv2.resize(refArray2,[fluoro.shape[0],fluoro.shape[1]])
+        refImg = Image.fromarray(refArray3.T)
+    
+        # Find transformed CT pin coordinates
+        ref = np.array(refImg).T
+        xRef, yRef = np.unravel_index(np.argmax(ref), ref.shape)
+        pins_ct2.append([xRef,yRef])
+    
+    sl_resized = np.array(sl_resized)
+    pins_ct2 = np.array(pins_ct2)
+    
+    # 2. Find the affine 2x3 transformation matrix from the 3 landmark coordinates
 
-    shift_down = 296
-    shift_right = 226
+    pins_fl = np.float32(pins_fl)
+    pins_ct2 = np.float32(pins_ct2)
+    Tr = cv2.getAffineTransform(pins_fl,pins_ct2)
+    
+    # 3. Perform affine transformation for fluoroscopic image and electrodes
 
-    fluoro_new = np.vstack((np.ones((shift_down,)+fluoro.shape[1:], 
-                                        dtype=fluoro.dtype), 
-                                        fluoro))
+    # Affine transform fluoroscopic image
 
-    fluoro_newnew = np.hstack((np.ones(fluoro_new.shape[:1]+(shift_right,),
-                                        dtype=fluoro_new.dtype), 
-                                        fluoro_new))
+    fluoro2 = cv2.warpAffine(fluoro,Tr,(fluoro.shape[0],fluoro.shape[1]))
 
+    # Affine transform fluoroscopic electrode coordinates
 
-    coords = np.array([[149.0, 77.0],
-             [143.0, 75.0],
-             [137.0, 76.0],
-             [132.0, 77.0],
-             [127.0, 78.0]])
+    coords = []
+    for i in range(len(coords_2d)):
+        refArray = np.zeros([fluoro.shape[0],fluoro.shape[0]])
+        refArray[int(coords_2d[i,0]),int(coords_2d[i,1])] = 1e8
+        refArray2 = cv2.warpAffine(refArray,Tr,(fluoro.shape[0],fluoro.shape[1]))
+        refImg = Image.fromarray(refArray2.T)
+    
+        # Find transformed electrode coordinates
+        ref = np.array(refImg).T
+        xRef, yRef = np.unravel_index(np.argmax(ref), ref.shape)
+        coords.append([xRef,yRef])
+
+    coords = np.array(coords)
+
     print('fluoro_ct_alignment.py successfully executed.')
     return coords
