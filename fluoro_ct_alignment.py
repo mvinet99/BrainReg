@@ -72,7 +72,7 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
 
     coords = []
     for i in range(len(coords_2d)):
-        refArray = np.zeros([fluoro.shape[0],fluoro.shape[0]])
+        refArray = np.zeros([fluoro.shape[0],fluoro.shape[1]])
         refArray[int(coords_2d[i,0]),int(coords_2d[i,1])] = 1e8
         refArray2 = cv2.warpAffine(refArray,Tr,(fluoro.shape[0],fluoro.shape[1]))
         refImg = Image.fromarray(refArray2.T)
