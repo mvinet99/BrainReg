@@ -128,6 +128,30 @@ def naive_project(coord_list,points_hull):
                 
     return projected_coord_list
 
+def resize_coords(old_coords, old_size, new_size):
+    new_coords = []
+    Rx = new_size[0]/old_size[0]
+    Ry = new_size[1]/old_size[1]
+    for i, old_coord in enumerate(old_coords):
+        new_coords[i] = [round(Rx*old_coord[0]), round(Ry*old_coord[1])]
+    return new_coords
+
+def arc_length(p1, p2, c):
+    """
+    Function to calculate the arc length between 2 points
+
+    input: 2 points along circle circumference and circle center
+    output: arc length in pixels
+    """
+    x1 = p1[0]; y1 = p1[1]
+    x2 = p2[0]; y2 = p2[1]
+    xc = c[0]; yc = c[1]
+    r = math.sqrt((x1-xc)**2 + (y1-yc)**2)
+    d = math.sqrt((x1-x2)**2 + (y1-y2)**2)
+    theta = math.acos(1 - (d**2)/(2*r**2))
+    arc_length = r*theta
+    return arc_length
+
 if __name__ =="__main__":
     import ex
     ex.hey()
