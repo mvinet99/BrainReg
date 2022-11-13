@@ -46,6 +46,7 @@ prect_data = np.nan_to_num(np.array(prect.get_fdata()))
 #read post op CT
 postct = nib.load(POSTCT_FILE_NAME)
 postct_data = np.nan_to_num(np.array(postct.get_fdata()))
+Tmatrix = np.transpose(prect.affine)
 
 t1 = nib.load(T1_FILE_NAME)
 t1_data = np.nan_to_num(np.array(t1.get_fdata()))
@@ -68,10 +69,11 @@ surface = mlab.pipeline.iso_surface(source_2,
                           opacity=0.8, 
                           colormap = 'black-white')
 pins_ct = np.array([[209.0, 147.626220703125, 54.0],
-[73.0, 73.03683471679688, 52.0],
-[147.27645874023438, 114.0, 85.0]])
+                    [73.0, 73.03683471679688, 52.0],
+                    [147.27645874023438, 114.0, 85.0]])
+
 fluoro = rotate(fluoro, 90)
-fluoro = cv2.resize(fluoro,(150,170))
+fluoro = cv2.resize(fluoro,(150,150))
 
 shift_down = 330
 shift_right = 200
@@ -85,6 +87,6 @@ fluoro_newnew = np.hstack((np.ones(fluoro_new.shape[:1]+(shift_right,),
                                     fluoro_new))
 
 mlab.imshow(fluoro_newnew)
-mlab.points3d(pins_ct[:,0],pins_ct[:,1],pins_ct[:,2], color = (0.2,1,.2), scale_factor=10)
-mlab.points3d(pins_ct[:,0],pins_ct[:,1], np.zeros_like(pins_ct[:,2]), color = (0.2,1,.2), scale_factor=10)
+#mlab.points3d(pins_ct[:,0],pins_ct[:,1],pins_ct[:,2], color = (0.2,1,.2), scale_factor=10)
+mlab.points3d(test_coords[:,0],test_coords[:,1], test_coords[:,2], color = (0.2,1,.2), scale_factor=10)
 mlab.show()

@@ -24,5 +24,13 @@ def ct_get_landmarks(prect, postct):
 				[73.0, 73.03683471679688, 52.0],
 				[77.19986724853516, 71.0, 148.0],
 				[203.0, 149.6582489013672, 153.0]])
+
+	## TODO: READ FROM GROUD TRUTH 
+	test_coords = np.array([[-45.11485451, -76.83932495, -40.28118491 , 1],
+			[-42.11494714,  55.16067505,  33.71881884 ,1],
+			[ 42.88505286,  53.16067505,  33.71892524 , 1],
+			[ 50.88514924, -73.83932495, -43.28106475 , 1]])
+	test_coords = test_coords @ np.linalg.inv(Tmatrix) 
+
 	print('ct_segmentation.py successfully executed.')
 	return {"pin": pin, "lead": lead }
