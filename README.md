@@ -13,6 +13,8 @@ Download DBS_bT20 from the box and place it in the same folder as this code. (Br
 
 ## Usage:
 
-Pipeline.ipynb simulates steps of the pipeline
+Interface.ipynb is the script the user will use to run the project and have outputs displayed.
+
+Pipeline.ipynb simulates steps of the pipeline.
 
 DataPreview.ipynb visualizes all the data we have available.
