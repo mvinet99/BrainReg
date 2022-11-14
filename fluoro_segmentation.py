@@ -7,6 +7,8 @@ import nibabel as nib
 import numpy as np
 import scipy.io
 import statistics
+
+from utils import coord_from_arc_length, calc_arc_length
 """
 RYAN
 """
