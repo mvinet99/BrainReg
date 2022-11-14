@@ -2,14 +2,16 @@ from matplotlib import animation, rc
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
+import math
 
 # get cooridnates of all points on hull
 def video_to_points(hull_data):
     """
     Function to find coordinates of all points on a hull
-
-    input: hull_data
-    output: coord_list
+    Args
+        hull_data np.ndarray float
+    Returns
+        coord_list np.ndarray float
 
     This function returns a list of coordinates of all the 
     points on the input hull data.
@@ -17,7 +19,16 @@ def video_to_points(hull_data):
     """
 
     return np.vstack(np.nonzero(hull_data)).transpose(1,0)
+
 def create_video(orig_image, dim=0):
+    """
+    Creates a video given the numpy array along dim
+    Args
+        orig_image np.ndarray float
+        dim int
+    Return
+        anim matplotlib.animation.FuncAnimation
+    """
     fig, ax = plt.subplots()
     plt.close()
     def animator(N): # N is the animation frame number
@@ -38,28 +49,16 @@ def create_video(orig_image, dim=0):
 def rotate(img, angle):
     """
     Function to rotate an image
-    
-    input: img, angle
-    output: dst
-    
-    This function takes in two input parameters: an image
-    and the angle (integer) and outputs a rotated image
-    by the specifed angle.
-    
+    Args
+        img np.ndarray float 
+        angle float
+    Retruns
+        dst np.ndarray float
     """
     rows,cols = img.shape
     M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
     dst = cv2.warpAffine(img,M,(cols,rows))
     return dst 
-
-def mayavi_transform(x, fluoro_shape):
-    """
-    Given pixels with start (0,0)
-    makes the coordinate system so taht the start is
-    (mid,mid)
-    """ 
-    return np.flip(np.flip(x -(np.array(fluoro_shape[0])/2)))
-
 
 def procrustes(X, Y):
     """
@@ -86,7 +85,6 @@ def procrustes(X, Y):
     U, _, V = np.linalg.svd(np.transpose(X0) @ Y0, full_matrices=False)
     V=np.transpose(V)
     Q = V @ np.transpose(U)
-    print(Q)
     # Optimal scaling
     alpha = np.trace(np.transpose(X0) @ Y0 @ Q) / np.trace(np.transpose(Y0) @ Y0)
 

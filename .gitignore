@@ -4,3 +4,5 @@ DBS_rs01/*
 *.zip
 DBS_*
 milos_test.py
+ct_model/*
+labels.csv
