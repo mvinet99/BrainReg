@@ -126,21 +126,35 @@ def resize_coords(old_coords, old_size, new_size):
         new_coords[i] = [round(Rx*old_coord[0]), round(Ry*old_coord[1])]
     return new_coords
 
-def arc_length(p1, p2, c):
+def calc_arc_length(p1, p2, c):
     """
-    Function to calculate the arc length between 2 points
-
-    input: 2 points along circle circumference and circle center
-    output: arc length in pixels
+    Calculate the clockwise arc length from p1 to p2 with center c
     """
-    x1 = p1[0]; y1 = p1[1]
-    x2 = p2[0]; y2 = p2[1]
-    xc = c[0]; yc = c[1]
+    x1 = p1[0]; y1 = p1[1]     # Start point
+    xc = c[0]; yc = c[1]       # Center point
     r = math.sqrt((x1-xc)**2 + (y1-yc)**2)
+    # End point
+    x2 = xc+r*(p2[0]-xc)/math.sqrt((p2[0]-xc)**2+(p2[1]-yc)**2)
+    y2 = yc+r*(p2[1]-yc)/math.sqrt((p2[1]-yc)**2+(p2[0]-xc)**2)
+    x3 = 2*xc-x1; y3 = 2*yc-y1 # Point opposite start point
     d = math.sqrt((x1-x2)**2 + (y1-y2)**2)
     theta = math.acos(1 - (d**2)/(2*r**2))
+    if x2 > x3:   # This only works if p1 is bottom point now
+        theta = 2*math.pi-theta
     arc_length = r*theta
     return arc_length
+
+def coord_from_arc_length(p1, c, arc_length):
+    """
+    Calculate the coordinate p2 with arc length from p1
+    """
+    x1 = p1[0]; y1 = p1[1]     # Start point
+    xc = c[0]; yc = c[1]       # Center point
+    r = math.sqrt((x1-xc)**2 + (y1-yc)**2)
+    circum = 2*math.pi*r
+    theta = 2*math.pi*arc_length/circum
+    coord = [x1-r*math.sin(theta), y1-r*(1-math.cos(theta))]
+    return coord
 
 if __name__ =="__main__":
     import ex
