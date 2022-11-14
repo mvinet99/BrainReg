@@ -26,8 +26,7 @@ def fluoro_get_coordinates(fluoro):
     num_electrodes = 8
 
     # Load fluoroscopy image and convert to greyscale
-    fluoro = imageio.imread('/'.join([data_dir, sample1]))
-    gray = cv2.cvtColor(fluoro, cv2.COLOR_BGR2GRAY)
+    gray = fluoro
 
     kernel_size = 5
     gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
