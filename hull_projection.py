@@ -28,6 +28,7 @@ def project_to_3d(aligned_coords, points_hull, Tmatrix):
 	print("hull_projection.py executed succesfully")
 	print(prediction)
 	return prediction
+# Expected result:
 #np.array([[ 48.88512421, -73.83932495,  21.71887207],
 #         			 [ 45.88512421, -68.83932495,  28.71887207],
 #        			 [ 44.88512421, -62.83932495,  34.71887207],
