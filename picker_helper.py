@@ -68,6 +68,7 @@ surface = mlab.pipeline.iso_surface(source_2,
                           contours=[256,], 
                           opacity=0.8, 
                           colormap = 'black-white')
+
 pins_ct = np.array([[209.0, 147.626220703125, 54.0],
                     [73.0, 73.03683471679688, 52.0],
                     [147.27645874023438, 114.0, 85.0]])
@@ -86,7 +87,11 @@ fluoro_newnew = np.hstack((np.ones(fluoro_new.shape[:1]+(shift_right,),
                                     dtype=fluoro_new.dtype), 
                                     fluoro_new))
 
-mlab.imshow(fluoro_newnew)
+#mlab.imshow(fluoro_newnew)
 #mlab.points3d(pins_ct[:,0],pins_ct[:,1],pins_ct[:,2], color = (0.2,1,.2), scale_factor=10)
-mlab.points3d(test_coords[:,0],test_coords[:,1], test_coords[:,2], color = (0.2,1,.2), scale_factor=10)
+points_hull = np.hstack( (points_hull, np.ones( (points_hull.shape[0],1))))
+
+points_hull=points_hull@np.linalg.inv(Tmatrix)
+
+mlab.points3d(points_hull[:,0],points_hull[:,1], points_hull[:,2], color = (0.2,1,.2), scale_factor=10)
 mlab.show()
