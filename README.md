@@ -32,3 +32,21 @@ Fluoro aligned Files | 26 |['DBS_bG01', 'DBS_bG02', 'DBS_bG03', 'DBS_bG06', 'DBS
 Camera position Files | 45 | ['DBS_bG17', 'DBS_bG27', 'DBS_bG29', 'DBS_bG30', 'DBS_bG38', 'DBS_bG53', 'DBS_bG54', 'DBS_bG56', 'DBS_bG59', 'DBS_bG62', 'DBS_bG63', 'DBS_bG64', 'DBS_bG65', 'DBS_bG72', 'DBS_bS02', 'DBS_bS05', 'DBS_bS17', 'DBS_bS18', 'DBS_bS21', 'DBS_bT01', 'DBS_bT05', 'DBS_bT07', 'DBS_bT08', 'DBS_bT15', 'DBS_IG01', 'DBS_IS01', 'DBS_IS02', 'DBS_IS04', 'DBS_IT01', 'DBS_IT02', 'DBS_IT03', 'DBS_IT04', 'DBS_IT06', 'DBS_IT07', 'DBS_IT08', 'DBS_IT09', 'DBS_rG01', 'DBS_rG02', 'DBS_rS02', 'DBS_rT01', 'DBS_rT02'] |
 GT Electrode location Files | 74 |['DBS_bG30', 'DBS_bS02', 'DBS_bS05', 'DBS_bS21', 'DBS_bT05', 'DBS_bT07', 'DBS_bT15', 'DBS_IG01', 'DBS_IT03', 'DBS_rG02', 'DBS_rS02', 'DBS_rT02']  |
 GT Pin tips location Files | 74 |['DBS_bG30', 'DBS_bS02', 'DBS_bS05', 'DBS_bS21', 'DBS_bT05', 'DBS_bT07', 'DBS_bT15', 'DBS_IG01', 'DBS_IT03', 'DBS_rG02', 'DBS_rS02', 'DBS_rT02'] |
+
+NOTE: DBS_bS02 has files in DICOM FOMAT!
+study_id
+|
+├── fluoro.tif
+│   
+├── preop_ct.nii
+|
+├── postop_ct.nii
+|
+├── T1.nii
+|
+├── hull_rh.mat
+|
+├── pin_tips.npy
+|
+└── lead_coord.npy
+

@@ -28,15 +28,23 @@ def picker_callback(picker_obj):
 
     print(picker_obj.get("pick_position"))
 
-SAMPLE_NAME = "data/DBS_bG02"
-NIFTI_PATH = os.path.join(SAMPLE_NAME,"coregistered_preopCT_DBS_bG02.nii")
+SAMPLE_NAME = "data/DBS_bT20"
+NIFTI_PATH = os.path.join(SAMPLE_NAME,"postop_ct.nii")
 
 nifti = nib.load(NIFTI_PATH)
 nifti_data = np.nan_to_num(np.array(nifti.get_fdata()))
+
+# TODO: figure out how to get the affine matrix
+Tmatrix = np.transpose(np.linalg.inv(nifti.affine))
 
 source = mlab.pipeline.scalar_field(nifti_data)
 surface = mlab.pipeline.iso_surface(source,
                           contours=[256,], 
                           opacity=0.8, 
                           colormap = 'black-white')
+pins_ct = np.load(os.path.join(SAMPLE_NAME,"pin_tips.npy"))
+# add 4th dimensions of 1s
+pins_ct = np.hstack((pins_ct, np.ones((pins_ct.shape[0],1)))) @ Tmatrix
+#mlab.points3d(pins_ct[:,0],pins_ct[:,1],pins_ct[:,2], color = (0.2,1,.2), scale_factor=10)
+mlab.points3d(134,117,69, color = (1,0,0), scale_factor=10)
 mlab.show()

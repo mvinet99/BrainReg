@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 import math
+import os
+import itertools
 
 # get cooridnates of all points on hull
 def video_to_points(hull_data):
@@ -20,6 +22,39 @@ def video_to_points(hull_data):
 
     return np.vstack(np.nonzero(hull_data)).transpose(1,0)
 
+def from_hull_to_ct_coords(ct_coords, nifti):
+    """
+    Converts the coordinates from the hull to the coordinates of the CT scan
+    Args:
+        ct_coords np.ndarray float (N,3)
+        nifti nibabel.nifti1.Nifti1Image  
+    Returns
+        ct_coords np.ndarray float (N,3)
+    """
+    Tmatrix = np.transpose(np.linalg.inv(nifti.affine))
+    ct_coords = np.hstack((ct_coords, np.ones((ct_coords.shape[0],1)))) @ Tmatrix
+    return ct_coords[:,0:3]
+ 
+def dist(x,y):
+    return np.sqrt(np.sum( (x-y)**2))
+
+def euclidean_distance_coords(predictions, ground_truth):
+    """
+    Given two set of points, find the euclidean distance between them.
+    This function is invariant to the order of the points.
+    We assume that the points closest to each other are the same points. i.e. represent the same object.
+        predictions nd.array nx3
+        ground_truth nd.array nx3
+    """
+    pred_perm = np.zeros_like(predictions)
+    dsts = []
+    perms = list(itertools.permutations([0, 1, 2, 3]))
+    for perm in perms:
+        pred_perm[0], pred_perm[1], pred_perm[2], pred_perm[3] = \
+        predictions[perm[0]], predictions[perm[1]], predictions[perm[2]], predictions[perm[3]]
+        dsts.append(np.mean(np.sqrt( np.sum((pred_perm-ground_truth)**2, axis=1 ))))
+    return np.min(dsts) 
+    
 def create_video(orig_image, dim=0):
     """
     Creates a video given the numpy array along dim
