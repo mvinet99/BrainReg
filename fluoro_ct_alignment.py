@@ -29,58 +29,66 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
 
     # 1. Proprocess CT image(s) and pins coordinates
 
-    # For each CT electrode coordinate, rotate the coorresponding slices 270 degrees,
-    # and resize the rotated image to match the size of the fluoro image. 
-    # Repeat this transformation process for the pin coordinates.
+    # Subtract 340 from x direction to cut off GUI section of fluoro images
+    pins_flx = np.array([x - 340 for x in pins_fl[:,0]])
+    pins_fl = np.array([[pins_flx[0],pins_fl[0,1]], [pins_flx[1],pins_fl[1,1]], [pins_flx[2], pins_fl[2,1]]])
+    fluorot = np.delete(fluoro, range(0,340),axis=1)
+
+    # 1. Preprocess the CT images and pin/DBS lead coordinates to match fluoro images
+
+    # Find the scaling factor
+    img_shape = (postct_data.shape[0], postct_data.shape[1])
+    reshaped_img_shape = (fluorot.shape[0], fluorot.shape[1])
+    scale = np.divide(reshaped_img_shape, img_shape)
+
     sl_num = np.array([pins_ct[:,2]])
     sl_resized = []
     pins_ct2 = []
-    for i in range(len(pins_ct)-1):
+    for i in range(len(pins_ct)):
         # Transform CT images
-        sl = np.rot90(np.rot90(np.rot90(postct_data[:, :, int(sl_num[0,i])])))
-        sl2 = cv2.resize(sl,[fluoro.shape[0],fluoro.shape[1]])
-        sl_resized.append(sl2)
+        sl = postct_data[:, :, int(sl_num[0,i])]
+        sl2 = cv2.resize(sl,[fluorot.shape[0],fluorot.shape[1]])
     
-        # Transform CT pin coordinates
-        refArray = np.zeros([256,256])
-        refArray[int(pins_ct[i,0]),int(pins_ct[i,1])] = 1e8
-        refArray2 = np.rot90(np.rot90(np.rot90(refArray)))
-        refArray3 = cv2.resize(refArray2,[fluoro.shape[0],fluoro.shape[1]])
-        refImg = Image.fromarray(refArray3.T)
-    
-        # Find transformed CT pin coordinates
-        ref = np.array(refImg).T
-        xRef, yRef = np.unravel_index(np.argmax(ref), ref.shape)
-        pins_ct2.append([xRef,yRef])
-    
+        CT_new = np.multiply([pins_ct[i,0], pins_ct[i,1]], scale)
+        pins_ct2.append(CT_new)
+
     sl_resized = np.array(sl_resized)
     pins_ct2 = np.array(pins_ct2)
-    
-    # 2. Find the affine 2x3 transformation matrix from the 3 landmark coordinates
 
+    # For CT DBS lead coordinate and fluoro DBS lead coordinate, move in the x- and y-axes to form the proper triangle for transformation
+
+    pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[pins_fl[2,0],pins_fl[2,1]-400]])
+    pins_ct2 = np.array([[pins_ct2[0,0]+220,pins_ct2[0,1]+420],[pins_ct2[1,0]+220,pins_ct2[1,1]+230],[pins_ct2[2,0]+320,pins_ct2[2,1]-70]])
+
+    # 2. Find the affine 2x3 transformation matrix from the 3 landmark coordinates, apply to fluoro image and resize
+
+    # Find 2x3 affine transformation matrix
+    rows, cols = fluorot.shape
     pins_fl = np.float32(pins_fl)
     pins_ct2 = np.float32(pins_ct2)
-    Tr = cv2.getAffineTransform(pins_fl,pins_ct2)
+    M = cv2.getAffineTransform(pins_fl, pins_ct2)
+
+    # Perform 2x3 affine transformation to fluoroscopy image, resize image to match 256x256 CT image shape
+    dst = cv2.warpAffine(fluorot, M, (rows, cols))
+    dst2 = cv2.resize(dst,[sl.shape[0],sl.shape[1]])
     
-    # 3. Perform affine transformation for fluoroscopic image and electrodes
+    # 3. Apply transformation matrix and resize to all fluoro electrode coordinates to register them to CT image space
 
-    # Affine transform fluoroscopic image
+    # Find the scaling factor
+    img_shape = (dst2.shape[1], dst2.shape[0])
+    reshaped_img_shape = (dst.shape[1], dst.shape[0])
+    scale = np.divide(img_shape, reshaped_img_shape)
 
-    fluoro2 = cv2.warpAffine(fluoro,Tr,(fluoro.shape[0],fluoro.shape[1]))
-
-    # Affine transform fluoroscopic electrode coordinates
-
+    # Apply transformation matrix
     coords = []
     for i in range(len(coords_2d)):
-        refArray = np.zeros([fluoro.shape[0],fluoro.shape[1]])
-        refArray[int(coords_2d[i,0]),int(coords_2d[i,1])] = 1e8
-        refArray2 = cv2.warpAffine(refArray,Tr,(fluoro.shape[0],fluoro.shape[1]))
-        refImg = Image.fromarray(refArray2.T)
+        pt = coords_2d[i]
+        new_x = M[0,0]*pt[0] + M[0,1]*pt[1] + M[0,2]
+        new_y = M[1,0]*pt[0] + M[1,1]*pt[1] + M[1,2]
     
-        # Find transformed electrode coordinates
-        ref = np.array(refImg).T
-        xRef, yRef = np.unravel_index(np.argmax(ref), ref.shape)
-        coords.append([xRef,yRef])
+        # Find resized coordinates in CT image space
+        coord_new = np.multiply([new_x, new_y], scale)
+        coords.append(coord_new)
 
     coords = np.array(coords)
 
