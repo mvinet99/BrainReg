@@ -12,15 +12,6 @@ def project_to_3d(aligned_coords, points_hull, Tmatrix):
 	Return:
 		prediction float64 numpy array shape=(n,x,y,z)
 	"""
-	## I hardcode this for now until output from CT alignment is correct
-	aligned_coords = np.array([[203, 83.00006068],
-						[198,  76.00005692],
-						[192,  70.00005567],
-						[185,  64.00005567],   
-						[177, 60.00005692],
-						[169, 57.00005317],
-						[161,  54.00004941],
-						[151, 53.00005442]])
 	coords=aligned_coords
 	coords = np.hstack( (aligned_coords, np.zeros( (aligned_coords.shape[0],1))))
 	coords = np.hstack( (coords, np.ones( (coords.shape[0],1))))
