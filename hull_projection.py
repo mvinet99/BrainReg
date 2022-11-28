@@ -1,6 +1,6 @@
 import numpy as np
 from mayavi import mlab
-from utils import naive_project
+from utils import naive_project, naive_project2
 """ 
 MILOS 
 """
@@ -16,7 +16,7 @@ def project_to_3d(aligned_coords, points_hull, Tmatrix):
 	coords = np.hstack( (aligned_coords, np.zeros( (aligned_coords.shape[0],1))))
 	coords = np.hstack( (coords, np.ones( (coords.shape[0],1))))
 	coords = coords @ Tmatrix
-	prediction = naive_project(coords[:,0:3],points_hull)
+	prediction = naive_project2(coords[:,0:3],points_hull)
 #    METHOD 2
 #    h = ConvexHull(points_hull)
 #    U = np.array([1,0,0])

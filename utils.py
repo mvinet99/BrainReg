@@ -153,6 +153,27 @@ def naive_project(coord_list,points_hull):
 
     return projected_coord_list
 
+def naive_project2(coord_list,points_hull):
+    """
+    Function to get the coordinates of 2d points on the 3d surface
+    It simulates projection of ray along x axis stepwise and uses integers to find intersection
+    Args 
+        coord_list np.ndarray float
+        points_hull np.ndarray float
+    Returns
+        projected_coord_list np.ndarray int
+    """
+    coord_list = coord_list[:,1:3]
+    projected_coord_list = []
+
+    for coord in coord_list:
+        coord = [100, coord[0], coord[1]]
+        ## find the point on the hull closest to cooord
+        dist = np.linalg.norm(points_hull - coord, axis=1)
+        idx = np.argmin(dist)
+        projected_coord_list.append(points_hull[idx])
+
+    return projected_coord_list
 def resize_coords(old_coords, old_size, new_size):
     new_coords = []
     Rx = new_size[0]/old_size[0]
