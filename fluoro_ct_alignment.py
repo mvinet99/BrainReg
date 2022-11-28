@@ -28,11 +28,17 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
     """
 
     # 1. Proprocess CT image(s) and pins coordinates
-
     # Subtract 340 from x direction to cut off GUI section of fluoro images
     pins_flx = np.array([x - 340 for x in pins_fl[:,0]])
     pins_fl = np.array([[pins_flx[0],pins_fl[0,1]], [pins_flx[1],pins_fl[1,1]], [pins_flx[2], pins_fl[2,1]]])
     fluorot = np.delete(fluoro, range(0,340),axis=1)
+    coords_new = []
+    for i in range(len(coords_2d)):
+        coords_n = np.array([coords_2d[i,0]-340,coords_2d[i,1]])
+        coords_new.append(coords_n)
+    coords_2d = np.array(coords_new)
+    # Define the CT pins and DBS lead coordinates from inputs
+    pins_ct = np.array([pins_ct[1],pins_ct[3],pins_ct[4]])
 
     # 1. Preprocess the CT images and pin/DBS lead coordinates to match fluoro images
 
