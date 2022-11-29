@@ -27,8 +27,8 @@ def fluoro_get_coordinates(fluoro):
     """
     num_electrodes = 8
 
-    # Load fluoroscopy image and convert to greyscale
-    gray = fluoro
+    # Load fluoroscopy image converted to greyscale
+    gray = cv2.cvtColor(fluoro, cv2.COLOR_BGR2GRAY)
 
     kernel_size = 5
     gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
@@ -160,27 +160,57 @@ def fluoro_get_coordinates(fluoro):
         new_electrodes = [coord_from_arc_length(circle_bottom, c, arc_length) for arc_length in new_arcs]
 
         all_ECoG_Coords = [item for sublist in [conf_coords, new_electrodes] for item in sublist]
-        
-    # ## Plots
-    # # CB blobs (yellow)
-    # fig, ax = plt.subplots(figsize=(15, 15))
-    # plt.imshow(gray)
-    # blank = np.zeros((1, 1))
-    # blobs = cv2.drawKeypoints(gray, keypoints, blank, (255, 225, 0),
-    #                         cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    # ax.imshow(blobs)
-    # # Fit circle (black)
-    # fit_circle = plt.Circle((xc,yc), radius=r, fill=False)
-    # ax.add_patch(fit_circle)
-    # # Added points (green)
-    # for point in new_electrodes:
-    #     guess_circle = plt.Circle(point, radius=ave_ECoG_size, fill=False, color='green')
-    #     ax.add_patch(guess_circle)
 
-    dbs = np.array([922, 805])
+    # ----------
+
+    # Edge detection
+    dst = cv2.Canny(fluoro, 30, 150, None, 3)
+
+    # Copy edges to the images that will display the results in BGR
+    cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
+    cdstP = np.copy(cdst)
+    cdstP2 = np.copy(cdstP)
+
+    # Probabilistic Line Transform
+    linesP = cv2.HoughLinesP(dst, 1, 1 * np.pi / 180, 50, None, 250, 20)
+    # Draw the lines
+    if linesP is not None:
+        for i in range(0, len(linesP)):
+            l = linesP[i][0]
+            cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), (255,0,0), 2, cv2.LINE_AA)
+
+    fluoro_size = [fluoro.shape[0], fluoro.shape[1]]
+
+    # Find the lead line
+    max_length = 0
+    if linesP is not None:
+        for i in range(0, len(linesP)):
+            l = linesP[i][0]
+            start = linesP[i][0][0:2]
+            end = linesP[i][0][2:4]
+            angle = math.atan2(start[1]-end[1], start[0]-end[0])*180/math.pi
+            length = math.dist(start, end)
+            # Remove the vertical annotation line
+            if (start[1] >= cdstP.shape[0]-1) and (end[1] == 0):
+                continue
+            # Remove lines that are not near-verticle
+            if not 50 <= angle <= 130:
+                continue
+            # Remove lines that are not in the approx x-range
+            if not (fluoro_size[1]*0.52 <= start[1] <= fluoro_size[1]*0.82) and (fluoro_size[1]*0.52 <= end[1] <= fluoro_size[1]*0.82):
+                continue
+            # Choose the longest line
+            if length > max_length:
+                max_length = length
+                lead_line = [start, end]
+
+            # Give filler line if not detected
+            if linesP is None:
+                lead_line = [[fluoro_size*0.62, fluoro_size*0.7],[fluoro_size*0.7,  fluoro_size*0.29]]
+
     pin_tips = np.array([[ 542., 1019.],
                         [1399.,  539.]])
     print('fluoro_segmentation.py successfully executed.')
-    return {"ecog":all_ECoG_Coords,
-    "dbs": dbs,
-    "pin": pin_tips }
+    return {"ecog": all_ECoG_Coords,
+            "dbs": lead_line,
+            "pin": pin_tips }
