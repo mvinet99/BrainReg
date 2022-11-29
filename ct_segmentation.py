@@ -106,5 +106,30 @@ def get_lead(nifti_data):
 
 	lead2 = best_point
 	return np.stack((lead1,lead2))
+
 if __name__ == "__main__":
-	pass
+	from utils import from_hull_to_ct_coords
+	from utils import euclidean_distance_coords
+	import os
+	SAMPLE_NAME = "DBS_bT20"
+	TEST_SAMPLES = ["DBS_bG67",
+					"DBS_bG66",
+					"DBS_bG64",
+					"DBS_bG56",
+					"DBS_bG30",
+					"DBS_bG30",
+					"DBS_bG28",
+					"DBS_bG22",
+					"DBS_bG09",
+					"DBS_bG06"]
+	acc=[]                  
+	for SAMPLE_NAME in TEST_SAMPLES:
+		GT = np.load(os.path.join("data/", SAMPLE_NAME,"pin_tips.npy"))
+		GT = from_hull_to_ct_coords(GT, nib.load(os.path.join("data/", SAMPLE_NAME,"preop_ct.nii")))
+
+		prect = nib.load("data/"+SAMPLE_NAME+"/preop_ct.nii")
+		prect_data = np.nan_to_num(np.array(prect.get_fdata()))
+
+		res = get_pins(prect_data)
+		acc.append(euclidean_distance_coords(res, GT))
+	print(np.mean(acc))
