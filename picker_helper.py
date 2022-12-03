@@ -6,9 +6,9 @@ import numpy as np
 import nibabel as nib
 import scipy.io
 from fluoro_ct_alignment import project_to_2d
-from utils import rotate
-from utils import procrustes
-from utils import video_to_points
+from utils_l import rotate
+from utils_l import procrustes
+from utils_l import video_to_points
 
 
 def picker_callback(picker_obj):
