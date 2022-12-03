@@ -6,3 +6,5 @@ DBS_*
 milos_test.py
 ct_model/*
 labels.csv
+*.csv
+*.h5
