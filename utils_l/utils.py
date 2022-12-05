@@ -5,6 +5,8 @@ import numpy as np
 import math
 import os
 import itertools
+from scipy.spatial import ConvexHull
+
 # get four max points of a 3d array
 def get_four_max_points(inp):
     """
@@ -77,12 +79,14 @@ def euclidean_distance_coords(predictions, ground_truth):
         predictions nd.array nx3
         ground_truth nd.array nx3
     """
+    N = len(predictions)
     pred_perm = np.zeros_like(predictions)
     dsts = []
-    perms = list(itertools.permutations([0, 1, 2, 3]))
+    perms = list(itertools.permutations(np.arange(N)))
+
     for perm in perms:
-        pred_perm[0], pred_perm[1], pred_perm[2], pred_perm[3] = \
-        predictions[perm[0]], predictions[perm[1]], predictions[perm[2]], predictions[perm[3]]
+        for j in range(N):
+            pred_perm[j] = predictions[perm[j]] 
         dsts.append(np.mean(np.sqrt( np.sum((pred_perm-ground_truth)**2, axis=1 ))))
     return np.min(dsts) 
     
@@ -169,6 +173,7 @@ def naive_project(coord_list,points_hull):
     Returns
         projected_coord_list np.ndarray int
     """
+    zmax=np.max(points_hull,axis=0)[0]
     coord_list = coord_list[:,1:3]
     coord_list = coord_list.astype(int)
     points_hull = points_hull.astype(int)
@@ -178,6 +183,10 @@ def naive_project(coord_list,points_hull):
         # find where the last two coordinates are equal
         idx = np.where( ( points_hull[:, 1:3] == np.array(coord)).all(axis=1))
         if len(idx) == 0:
+            topmost =  np.array( [zmax, coord[0], coord[1]] )
+            # find the closest to topmost in points hull
+            idx = np.argmin(np.sqrt(np.sum((points_hull-topmost)**2, axis=1)))
+            projected_coord_list.append(points_hull[idx])
             continue
         else:
             projected_coord_list.append(points_hull[idx][np.argmax(points_hull[idx][:,0])])
@@ -205,6 +214,23 @@ def naive_project2(coord_list,points_hull):
         projected_coord_list.append(points_hull[idx])
 
     return projected_coord_list
+
+def math_project(coord_list, points_hull):
+    projected_coords = []
+    for coord in coord_list:
+        p_rot = points_hull
+        #p_rot[:,2] = -p_rot[:,2]
+        h = ConvexHull(p_rot)
+        U = np.array([1,0,0])
+        W = np.array([0,coord[1], coord[2]])
+        ## getting equation of a facet, in this case a triangle 
+        eq = h.equations.T
+        V,b = eq[:-1],eq[-1]
+        t = (-b - W@V)/(U@V)
+        t = np.min(t[t>10])
+        vec = t*U + W
+        projected_coords.append(vec)
+    return projected_coords
 def resize_coords(old_coords, old_size, new_size):
     new_coords = []
     Rx = new_size[0]/old_size[0]

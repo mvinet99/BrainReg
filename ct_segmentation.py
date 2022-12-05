@@ -2,7 +2,7 @@ import numpy as np
 import nibabel as nib
 import numpy as np
 from sklearn.cluster import DBSCAN
-from utils import dist
+from utils_l import dist
 
 def ct_get_landmarks(prect, postct):
 	"""
@@ -108,10 +108,16 @@ def get_lead(nifti_data):
 	return np.stack((lead1,lead2))
 
 if __name__ == "__main__":
-	from utils import from_hull_to_ct_coords
-	from utils import euclidean_distance_coords
+	from utils_l import from_hull_to_ct_coords
+	from utils_l import euclidean_distance_coords
 	import os
-	SAMPLE_NAME = "DBS_bT20"
+	import pandas as pd
+	from tqdm import tqdm
+
+	df = pd.read_csv("split.csv")
+	df = df.loc[df['split'] == 'test']
+	TEST_SAMPLES = np.array(df.ids)
+	# working great on
 	TEST_SAMPLES = ["DBS_bG67",
 					"DBS_bG66",
 					"DBS_bG64",
@@ -122,14 +128,18 @@ if __name__ == "__main__":
 					"DBS_bG22",
 					"DBS_bG09",
 					"DBS_bG06"]
+
 	acc=[]                  
-	for SAMPLE_NAME in TEST_SAMPLES:
-		GT = np.load(os.path.join("data/", SAMPLE_NAME,"pin_tips.npy"))
-		GT = from_hull_to_ct_coords(GT, nib.load(os.path.join("data/", SAMPLE_NAME,"preop_ct.nii")))
+	for SAMPLE_NAME in tqdm(TEST_SAMPLES):
+		if os.path.exists(os.path.join("data", SAMPLE_NAME, "preop_ct.nii")):
+			GT = np.load(os.path.join("data/", SAMPLE_NAME,"pin_tips.npy"))
+			GT = from_hull_to_ct_coords(GT, nib.load(os.path.join("data/", SAMPLE_NAME,"preop_ct.nii")))
 
-		prect = nib.load("data/"+SAMPLE_NAME+"/preop_ct.nii")
-		prect_data = np.nan_to_num(np.array(prect.get_fdata()))
+			prect = nib.load("data/"+SAMPLE_NAME+"/preop_ct.nii")
+			prect_data = np.nan_to_num(np.array(prect.get_fdata()))
 
-		res = get_pins(prect_data)
-		acc.append(euclidean_distance_coords(res, GT))
+			res = get_pins(prect_data)
+			acc.append(euclidean_distance_coords(res, GT))
+			print(acc)
 	print(np.mean(acc))
+	print(f"{np.mean(acc)} +=- {np.std(acc)}")
