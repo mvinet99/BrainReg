@@ -1,6 +1,6 @@
 import numpy as np
 from mayavi import mlab
-from utils import naive_project, naive_project2
+from utils_l import naive_project, naive_project2, math_project
 """ 
 MILOS 
 """
@@ -16,7 +16,7 @@ def project_to_3d(aligned_coords, points_hull, Tmatrix):
 	coords = np.hstack( (aligned_coords, np.zeros( (aligned_coords.shape[0],1))))
 	coords = np.hstack( (coords, np.ones( (coords.shape[0],1))))
 	coords = coords @ Tmatrix
-	prediction = naive_project(coords[:,0:3],points_hull)
+	prediction = math_project(coords[:,0:3],points_hull)
 #    METHOD 2
 #    h = ConvexHull(points_hull)
 #    U = np.array([1,0,0])
@@ -51,10 +51,10 @@ if __name__ == "__main__":
                     [151, 53.00005442]])
     import scipy.io
     import nibabel as nib
-    hull = scipy.io.loadmat("DBS_bT20/hull_rh.mat")
+    hull = scipy.io.loadmat("data/DBS_bT20/hull_rh.mat")
     points_hull=np.array(hull['mask_indices'])	
 
-    prect = nib.load("DBS_bt20/rpreop_ct.nii")
+    prect = nib.load("data/DBS_bt20/preop_ct.nii")
     Tmatrix = np.transpose(prect.affine)
 
     predictions = project_to_3d(aligned_coords, points_hull, Tmatrix)   

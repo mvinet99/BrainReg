@@ -3,8 +3,9 @@ import nibabel as nib
 import numpy as np
 from sklearn.cluster import DBSCAN
 from utils_l import dist
+from ct_localizer import process_study_inference, get_model
 
-def ct_get_landmarks(prect, postct):
+def ct_get_landmarks(prect, postct, method="ML"):
 	"""
 	Given the CT preop and postop image, performs landmark detection and
 	registration and returns the coordinates for each registered landmark.
@@ -18,9 +19,21 @@ def ct_get_landmarks(prect, postct):
 			y is the y coordinate of the landmark
 			z is the y coordinate of the landmark
 	"""
-	pins = get_pins(prect)
+	if method=="ML":
+		ct_ex, factors = process_study_inference(prect)
+		model = get_model(width=64, height=64, depth=64)
+		model.load_weights("weights/ct_pin_localize.h5")
+		prediction = model.predict(np.expand_dims(ct_ex, axis=0))[0]
+		factors = 1/np.array(factors)
+		prediction[:,0]*=factors[0]
+		prediction[:,1]*=factors[1]
+		prediction[:,2]*=factors[2]
+		prediction *= 60
+		pins = prediction
+	else:
+		pins = get_pins(prect)
+
 	leads = get_lead(postct)
-	#lead = np.array([147.27645874023438, 114.0, 85.0])
 	print('ct_segmentation.py successfully executed.')
 	return {"pin": pins, "lead": leads }
 

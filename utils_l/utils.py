@@ -162,7 +162,16 @@ def procrustes(X, Y):
     Ya = alpha * (Y0 @ Q) + muX
 
     return Ya, Q, muX, muY, alpha 
-
+def mixed_project(coord_list, point_hull):
+    """
+    Function to get the coordinates of 2d points on the 3d surface
+    It simulates projection of ray along x axis stepwise and uses integers to find intersection
+    Args 
+        coord_list np.ndarray float
+        points_hull np.ndarray float
+    Returns
+        projected_coord_list np.ndarray int
+    """ 
 def naive_project(coord_list,points_hull):
     """
     Function to get the coordinates of 2d points on the 3d surface
@@ -182,14 +191,13 @@ def naive_project(coord_list,points_hull):
     for coord in coord_list:
         # find where the last two coordinates are equal
         idx = np.where( ( points_hull[:, 1:3] == np.array(coord)).all(axis=1))
-        if len(idx) == 0:
+        try:
+            projected_coord_list.append(points_hull[idx][np.argmax(points_hull[idx][:,0])])
+        except:
             topmost =  np.array( [zmax, coord[0], coord[1]] )
             # find the closest to topmost in points hull
             idx = np.argmin(np.sqrt(np.sum((points_hull-topmost)**2, axis=1)))
             projected_coord_list.append(points_hull[idx])
-            continue
-        else:
-            projected_coord_list.append(points_hull[idx][np.argmax(points_hull[idx][:,0])])
 
     return projected_coord_list
 
@@ -231,6 +239,7 @@ def math_project(coord_list, points_hull):
         vec = t*U + W
         projected_coords.append(vec)
     return projected_coords
+
 def resize_coords(old_coords, old_size, new_size):
     new_coords = []
     Rx = new_size[0]/old_size[0]
