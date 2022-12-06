@@ -2,6 +2,7 @@ import cv2
 import imageio
 from PIL import Image
 import numpy as np
+from utils import rotate
 """
 MICAH
 """
@@ -28,15 +29,54 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
     """
 
     # 1. Proprocess CT image(s) and pins coordinates
+
     # Subtract 340 from x direction to cut off GUI section of fluoro images
-    pins_flx = np.array([x - 340 for x in pins_fl[:,0]])
-    pins_fl = np.array([[pins_flx[0],pins_fl[0,1]], [pins_flx[1],pins_fl[1,1]], [pins_flx[2], pins_fl[2,1]]])
+    coords_new = []
+    for i in range(len(pins_fl)):
+        coords_n = np.array([pins_fl[i,0]-340,pins_fl[i,1]])
+        coords_new.append(coords_n)
+    pins_fl = np.array(coords_new)
+
     fluorot = np.delete(fluoro, range(0,340),axis=1)
+    
     coords_new = []
     for i in range(len(coords_2d)):
         coords_n = np.array([coords_2d[i,0]-340,coords_2d[i,1]])
         coords_new.append(coords_n)
     coords_2d = np.array(coords_new)
+
+    # Account for cases where only one DBS pin tip point can be found: estimation of second pin tip point
+
+    if len(pins_fl) == 3:
+
+        # Transform fluoro pin coordinate
+        refArray = np.zeros([fluorot.shape[0],fluorot.shape[1]])
+        refArray[int(pins_ct[0,0]),int(pins_ct[0,1])] = 1e8
+        refArray2 = rotate(refArray,180)
+        refImg = Image.fromarray(refArray2.T)
+    
+        # Find transformed fluoro pin coordinate
+        ref = np.array(refImg).T
+        xRef, yRef = np.unravel_index(np.argmax(ref), ref.shape)
+
+        point1 = [xRef,yRef]
+
+        # Find the leftmost point of the two fluoro pin coordinates
+        mn = np.amin([xRef, pins_fl[0,0]])
+
+        # Append new coordinate to fluoro pins array
+        if mn == xRef:
+            pins_fl = np.array([[xRef,yRef],[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[pins_fl[2,0],pins_fl[2,1]]])
+        else:
+            pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[xRef,yRef],[pins_fl[1,0],pins_fl[1,1]],[pins_fl[2,0],pins_fl[2,1]]])
+
+    
+
+    # For now, take the middle point of the DBS lead start and end points as DBS lead coordinate
+
+    pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[np.rint((pins_fl[2,0]+pins_fl[3,0])/2),np.rint((pins_fl[2,1]+pins_fl[3,1])/2)]])
+
+
     # Define the CT pins and DBS lead coordinates from inputs
     pins_ct = np.array([pins_ct[1],pins_ct[3],pins_ct[4]])
 
@@ -64,7 +104,7 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
     # For CT DBS lead coordinate and fluoro DBS lead coordinate, move in the x- and y-axes to form the proper triangle for transformation
 
     pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[pins_fl[2,0],pins_fl[2,1]-400]])
-    pins_ct2 = np.array([[pins_ct2[0,0]+220,pins_ct2[0,1]+420],[pins_ct2[1,0]+220,pins_ct2[1,1]+230],[pins_ct2[2,0]+320,pins_ct2[2,1]-70]])
+    pins_ct2 = np.array([[pins_ct2[0,0]+220,pins_ct2[0,1]+420],[pins_ct2[1,0]+220,pins_ct2[1,1]+230],[pins_ct2[2,0]+320,pins_ct2[2,1]-80]])
 
     # 2. Find the affine 2x3 transformation matrix from the 3 landmark coordinates, apply to fluoro image and resize
 
