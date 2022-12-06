@@ -6,3 +6,4 @@ matplotlib==3.5.2
 imageio==2.22.0
 mayavi==4.8.1
 circle-fit
+tensorflow
