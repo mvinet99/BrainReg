@@ -207,6 +207,9 @@ def fluoro_get_coordinates(fluoro):
 
     # ---------- Find DBS lead
 
+    # Import, convert, and blur image
+    fluoro = imageio.imread('/'.join([data_dir, sample6]))
+
     # Edge detection
     dst = cv2.Canny(fluoro, 30, 150, None, 3)
 
@@ -222,10 +225,9 @@ def fluoro_get_coordinates(fluoro):
         for i in range(0, len(linesP)):
             l = linesP[i][0]
             cv2.line(cdstP, (l[0], l[1]), (l[2], l[3]), (255,0,0), 2, cv2.LINE_AA)
-
-    fluoro_size = [fluoro.shape[0], fluoro.shape[1]]
-
+            
     # Find the lead line
+    fluoro_size = [fluoro.shape[0], fluoro.shape[1]]
     max_length = 0
     if linesP is not None:
         for i in range(0, len(linesP)):
@@ -248,16 +250,14 @@ def fluoro_get_coordinates(fluoro):
                 max_length = length
                 lead_line = [start, end]
 
-            # Give filler line if not detected
-            if linesP is None:
-                lead_line = [[fluoro_size*0.62, fluoro_size*0.7],[fluoro_size*0.7,  fluoro_size*0.29]]
-            else:
-                # Filler lead line
-                lead_line = np.array([[950, 850], [1070,  350]])
-            
-            # Make sure top point is first
-            if lead_line[0][1] > lead_line[1][1]:
-                lead_line = [lead_line[1], lead_line[0]]
+    if linesP is not None:
+        cv2.line(cdstP2, (lead_line[0][0],lead_line[0][1]), (lead_line[1][0], lead_line[1][1]), (0,255,0), 2, cv2.LINE_AA)
+    else:
+        # Filler lead line
+        lead_line = np.array([[950, 850], [1070,  350]])
+        
+    if lead_line[0][1] > lead_line[1][1]:
+        lead_line = [lead_line[1], lead_line[0]]
 
     # ---------- Find Pintips
 
