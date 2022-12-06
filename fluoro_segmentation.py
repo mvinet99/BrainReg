@@ -25,6 +25,8 @@ def fluoro_get_coordinates(fluoro):
                 x is the x coordinate of the electrode
                 y is the y coordinate of the  electode
     """
+    # ---------- Find ECoG Electrodes
+    
     num_electrodes = 8
 
     # Load fluoroscopy image converted to greyscale
@@ -158,10 +160,51 @@ def fluoro_get_coordinates(fluoro):
         # Flatten list of lists
         new_arcs = [item for sublist in new_arcs for item in sublist]
         new_electrodes = [coord_from_arc_length(circle_bottom, c, arc_length) for arc_length in new_arcs]
+        
+    all_ECoG_Coords = [item for sublist in [conf_coords, new_electrodes] for item in sublist]
 
-        all_ECoG_Coords = [item for sublist in [conf_coords, new_electrodes] for item in sublist]
+    # Get arc lengths again along fit circle from circle bottom
+    arc_lengths = []  # Initialize coordinate arc lengths
+    for i in range(len(all_ECoG_Coords)):
+        arc_lengths.append(calc_arc_length(circle_bottom, all_ECoG_Coords[i], c))
+            
+    # Get the expected number of coordinates
+    if len(all_ECoG_Coords) < num_electrodes:
+        edge_coords = []
+        zipped = list(zip(arc_lengths, all_ECoG_Coords))
+        zipped.sort()
+        sorted_coords = [truth for _,truth in zipped]
+        sorted_arcs = [length for length,_ in zipped]
+        diffs = [x-sorted_arcs[i-1] for i,x in enumerate(sorted_arcs)][1:]
+        mean_diff = sum(diffs)/len(diffs)
+        
+        for i in range(num_electrodes-len(all_ECoG_Coords)):
+            left_ECoG = sorted_coords[0]
+            left_predict_arc = sorted_arcs[0] - mean_diff
+            left_predict = coord_from_arc_length(circle_bottom, c, left_predict_arc)
+            left_predict_space = gray[math.floor(left_predict[1]-ave_ECoG_size):math.ceil(left_predict[1]+ave_ECoG_size),
+                                    math.floor(left_predict[0]-ave_ECoG_size):math.ceil(left_predict[0]+ave_ECoG_size)]
+            left_predict_shade = left_predict_space.mean(axis=0).mean(axis=0)
+            
+            right_ECoG = sorted_coords[-1]
+            right_predict_arc = sorted_arcs[-1] + mean_diff
+            right_predict = coord_from_arc_length(circle_bottom, c, right_predict_arc)
+            right_predict_space = gray[math.floor(right_predict[1]-ave_ECoG_size):math.ceil(right_predict[1]+ave_ECoG_size),
+                                    math.floor(right_predict[0]-ave_ECoG_size):math.ceil(right_predict[0]+ave_ECoG_size)]
+            right_predict_shade = right_predict_space.mean(axis=0).mean(axis=0)
+            
+            if left_predict_shade < right_predict_shade: # Left predict space is darker
+                sorted_coords = left_predict+sorted_coords
+                sorted_arcs = [left_predict_arc]+sorted_arcs
+                edge_coords.append(left_predict)
+            else: # Right predict space is darker
+                sorted_coords = sorted_coords+left_predict
+                sorted_arcs = sorted_arcs+[right_predict_arc]
+                edge_coords.append(right_predict)
+            
+    all_ECoG_Coords = all_ECoG_Coords + edge_coords
 
-    # ----------
+    # ---------- Find DBS lead
 
     # Edge detection
     dst = cv2.Canny(fluoro, 30, 150, None, 3)
@@ -207,9 +250,98 @@ def fluoro_get_coordinates(fluoro):
             # Give filler line if not detected
             if linesP is None:
                 lead_line = [[fluoro_size*0.62, fluoro_size*0.7],[fluoro_size*0.7,  fluoro_size*0.29]]
+            else:
+                # Filler lead line
+                lead_line = np.array([[950, 850], [1070,  350]])
+            
+            # Make sure top point is first
+            if lead_line[0][1] > lead_line[1][1]:
+                lead_line = [lead_line[1], lead_line[0]]
 
-    pin_tips = np.array([[ 542., 1019.],
-                        [1399.,  539.]])
+    # ---------- Find Pintips
+
+    boundary = 0.015
+    ann_idx = np.where(gray[0,:] == 0)[0][0]
+    radius = round((gray.shape[1]-ann_idx)/2)
+    center = [ann_idx+radius, radius]
+    radius_mask = radius*(1-boundary)
+    h, w = gray.shape[:2]
+
+    # Create a circular mask and make the background white because OpenCV's
+    # findContours assumes white is background and black is background
+    mask = create_circular_mask(h, w, center=center, radius=radius_mask)
+    gray[~mask]=255
+
+    blurred = cv2.GaussianBlur(gray,(5, 5),0)
+    blurred = 255-blurred
+    thresh = cv2.threshold(blurred, 180, 255, cv2.THRESH_BINARY)[1]
+    cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                            cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+
+    right_options = []
+    left_options = []
+
+    # loop over the contours
+    for c in cnts:
+        # Exclude contours with 0 moment
+        M = cv2.moments(c)
+        if M["m00"] == 0:
+            continue
+        # Exclude contours that are too big/small
+        area = cv2.contourArea(c)
+        if not (area > 150 and area < 6000):
+            continue
+        # Exclude contours with too many sides
+        shape = detect(c)
+        if shape == 'circle':
+            continue
+        # Exclude contours by location
+        cX = int((M["m10"] / M["m00"]))
+        cY = int((M["m01"] / M["m00"]))
+        if (math.sqrt((cX-center[0])**2 + (cY-center[1])**2)) < radius*0.85:
+            continue # Contour is close to center
+        if cY < h/3:
+            continue # Contour is in top third of figure
+        if center[0]-radius*0.3 < cX < center[0]+radius*0.3:
+            continue # Contour is too close to the center to be a pin
+            
+        # Assign to left or right options
+        if cX < center[0]:
+            left_options.append(c)
+        else:
+            right_options.append(c)
+        
+        c = c.astype("int")
+
+    pin_tips = []
+    if left_options:
+        max_left_area = 0
+        left_pin_coord = (0,0)
+        for c in left_options:
+            if cv2.contourArea(c) > max_left_area:
+                left_pin = c
+        for point in left_pin:
+            if point[0][0] > left_pin_coord[0]:
+                left_pin_coord = point[0]
+        pin_tips.append(left_pin_coord)
+            
+    if right_options:
+        max_right_area = 0
+        right_pin_coord = (w,h)
+        for c in right_options:
+            if cv2.contourArea(c) > max_right_area:
+                right_pin = c
+        for point in right_pin:
+            if point[0][0] < right_pin_coord[0]:
+                right_pin_coord = point[0]
+        pin_tips.append(right_pin_coord)
+
+    if not pin_tips:
+        pin_tips = np.array([[ 542., 1019.],
+                            [1399.,  539.]])
+    
+
     print('fluoro_segmentation.py successfully executed.')
     return {"ecog": all_ECoG_Coords,
             "dbs": lead_line,

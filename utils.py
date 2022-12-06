@@ -212,6 +212,48 @@ def coord_from_arc_length(p1, c, arc_length):
     coord = [x1-r*math.sin(theta), y1-r*(1-math.cos(theta))]
     return coord
 
+def detect(c):
+    # From https://pyimagesearch.com/2016/02/08/opencv-shape-detection/
+    # initialize the shape name and approximate the contour
+    shape = "unidentified"
+    peri = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+    
+    # if the shape is a triangle, it will have 3 vertices
+    if len(approx) == 3:
+        shape = "triangle"
+    # if the shape has 4 vertices, it is either a square or
+    # a rectangle
+    elif len(approx) == 4:
+        # compute the bounding box of the contour and use the
+        # bounding box to compute the aspect ratio
+        (x, y, w, h) = cv2.boundingRect(approx)
+        ar = w / float(h)
+        # a square will have an aspect ratio that is approximately
+        # equal to one, otherwise, the shape is a rectangle
+        shape = "square" if ar >= 0.95 and ar <= 1.05 else "rectangle"
+    # if the shape is a pentagon, it will have 5 vertices
+    elif len(approx) == 5:
+        shape = "pentagon"
+    # otherwise, we assume the shape is a circle
+    else:
+        shape = "circle"
+    # return the name of the shape
+    return shape
+
+def create_circular_mask(h, w, center=None, radius=None):
+    # From https://stackoverflow.com/a/44874588
+    if center is None: # use the middle of the image
+        center = (int(w/2), int(h/2))
+    if radius is None: # use the smallest distance between the center and image walls
+        radius = min(center[0], center[1], w-center[0], h-center[1])
+
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+
+    mask = dist_from_center <= radius
+    return mask
+
 if __name__ =="__main__":
     import ex
     ex.hey()
