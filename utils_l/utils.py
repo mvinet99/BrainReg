@@ -79,6 +79,8 @@ def euclidean_distance_coords(predictions, ground_truth):
         predictions nd.array nx3
         ground_truth nd.array nx3
     """
+    # TODO: if the sizes are different check every possible eculidean distance
+     
     N = len(predictions)
     pred_perm = np.zeros_like(predictions)
     dsts = []

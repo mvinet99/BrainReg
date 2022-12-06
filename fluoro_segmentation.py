@@ -208,7 +208,7 @@ def fluoro_get_coordinates(fluoro):
     # ---------- Find DBS lead
 
     # Import, convert, and blur image
-    fluoro = imageio.imread('/'.join([data_dir, sample6]))
+    #fluoro = imageio.imread('/'.join([data_dir, sample6]))
 
     # Edge detection
     dst = cv2.Canny(fluoro, 30, 150, None, 3)
