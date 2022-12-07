@@ -51,7 +51,7 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
 
         # Transform fluoro pin coordinate
         refArray = np.zeros([fluorot.shape[0],fluorot.shape[1]])
-        refArray[int(pins_ct[0,0]),int(pins_ct[0,1])] = 1e8
+        refArray[int(pins_fl[0,0]),int(pins_fl[0,1])] = 1e8
         refArray2 = rotate(refArray,180)
         refImg = Image.fromarray(refArray2.T)
     
