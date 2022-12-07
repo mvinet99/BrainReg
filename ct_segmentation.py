@@ -55,14 +55,17 @@ def get_pins(nifti_data):
 
 	model = DBSCAN(eps=25, min_samples=5)
 	model.fit_predict(point_cloud)
-	pred = model.fit_predict(point_cloud)
-	a,b = np.unique(model.labels_, return_counts=True)
+
+	point_cloud = point_cloud[model.labels_!=-1]
+	labs = model.labels_[model.labels_!=-1]
+
+	a,b = np.unique(labs, return_counts=True)
 	sorted_clusters = np.array((a,b)).transpose(1,0)
 	sorted_clusters=sorted_clusters[sorted_clusters[:,1].argsort()]
 	l1, l2, l3, l4 = sorted_clusters[-1][0], sorted_clusters[-2][0], sorted_clusters[-3][0], sorted_clusters[-4][0], 
-	take = (model.labels_==l1) | (model.labels_==l2) |  (model.labels_== l3) |(model.labels_== l4)
+	take = (labs==l1) | (labs==l2) |  (labs== l3) |(labs== l4)
 	new_pc = point_cloud[take]
-	new_labels = model.labels_[take]
+	new_labels = labs[take]
 	all_labels = np.unique(new_labels)
 	min_points = []
 	for lab in all_labels:
@@ -97,6 +100,10 @@ def get_lead(nifti_data):
 			point_cloud = np.vstack((point_cloud, np.hstack( (white_pixel_coords, np.ones((white_pixel_coords.shape[0] , 1))*i )))) 
 	model = DBSCAN(eps=25, min_samples=10)
 	model.fit_predict(point_cloud)
+
+	point_cloud = point_cloud[model.labels_!=-1]
+	labs = model.labels_[model.labels_!=-1]
+ 
 	mid = np.array([128, 88, 128])
 	smallest_dist=np.inf
 	best_point=None
@@ -108,7 +115,7 @@ def get_lead(nifti_data):
 			best_point_id= idx
 	lead1 = best_point
 	# delete a cluster from which this point is
-	new_pc = point_cloud[model.labels_ != model.labels_[best_point_id]]
+	new_pc = point_cloud[labs != labs[best_point_id]]
 
 	smallest_dist=np.inf
 	best_point=None
@@ -118,7 +125,10 @@ def get_lead(nifti_data):
 			best_point=point
 
 	lead2 = best_point
-	return np.stack((lead1,lead2))
+
+	preds = np.stack((lead1,lead2))
+
+	return np.transpose(np.array([preds[:,0], preds[:,2], preds[:,1]]))
 
 if __name__ == "__main__":
 	from utils_l import from_hull_to_ct_coords
@@ -131,16 +141,16 @@ if __name__ == "__main__":
 	df = df.loc[df['split'] == 'test']
 	TEST_SAMPLES = np.array(df.ids)
 	# working great on
-	TEST_SAMPLES = ["DBS_bG67",
-					"DBS_bG66",
-					"DBS_bG64",
-					"DBS_bG56",
-					"DBS_bG30",
-					"DBS_bG30",
-					"DBS_bG28",
-					"DBS_bG22",
-					"DBS_bG09",
-					"DBS_bG06"]
+#	TEST_SAMPLES = ["DBS_bG67",
+#					"DBS_bG66",
+#					"DBS_bG64",
+#					"DBS_bG56",
+#					"DBS_bG30",
+#					"DBS_bG30",
+#					"DBS_bG28",
+#					"DBS_bG22",
+#					"DBS_bG09",
+#					"DBS_bG06"]
 
 	acc=[]                  
 	for SAMPLE_NAME in tqdm(TEST_SAMPLES):
@@ -150,6 +160,18 @@ if __name__ == "__main__":
 
 			prect = nib.load("data/"+SAMPLE_NAME+"/preop_ct.nii")
 			prect_data = np.nan_to_num(np.array(prect.get_fdata()))
+
+#			prect=prect_data
+#			ct_ex, factors = process_study_inference(prect)
+#			model = get_model(width=64, height=64, depth=64)
+#			model.load_weights("weights/ct_pin_localize.h5")
+#			prediction = model.predict(np.expand_dims(ct_ex, axis=0))[0]
+#			factors = 1/np.array(factors)
+#			prediction[:,0]*=factors[0]
+#			prediction[:,1]*=factors[1]
+#			prediction[:,2]*=factors[2]
+#			prediction *= 60
+#			res = prediction
 
 			res = get_pins(prect_data)
 			acc.append(euclidean_distance_coords(res, GT))
