@@ -8,3 +8,4 @@ mayavi==4.8.1
 circle-fit
 tensorflow
 imutils
+tabulate
