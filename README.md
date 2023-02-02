@@ -9,7 +9,7 @@ To install all the required libraries.
 Note: ipywidgets and ipyevents packages need to be installed for mlab to run in jupyter.
 
 ## Data
-Download DBS_bT20 from the box and place it in the same folder as this code. (BrainReg)
+Download the 'data.zip' from the Box drive, unzip, and place it in the same folder as this code. (BrainReg)
 
 ## Usage:
 
