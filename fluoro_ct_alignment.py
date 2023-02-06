@@ -1,34 +1,87 @@
 import cv2
-import imageio
+import scipy
 from PIL import Image
 import numpy as np
+import math
 from utils import rotate
-"""
-MICAH
-"""
-def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
-    """
-    Align fluoroscopy image with CT image 
-    Args:
-        prect 3 dimensional float64 numpy array 
-        postct 3 dimensional float64 numpy array
-        fluoro uint8 numpy array shape = (height,width) representing grayscale image
-        pins_ct landmarks float64 numpy array shape = (n,x,y,z) 
-                where n is the number of landmarks
-                x is the x coordinate of the landmark
-                y is the y coordinate of the landmark
-                z is the y coordinate of the landmark
-        coords_2d uint8 numpy array shape = (n,x,y) 
-            where n is the number of electrodes
-            x is the x coordinate of the electrode
-            y is the y coordinate of the  electode
-        fluoro_aligned numpy array 
+from utils import euclidean_distance_coords
 
-    Return:
-       coords_aligned_2d float64 numpy array shape = (n,x,y) 
+def get_middle_half(postct_array):
+  
+  # Saggital axis (defined the z-direction) is the side of the head (rather than front-back, top-bottom)
+  saggital_slices = postct_array.shape[2]
+  first_quarter = int(saggital_slices * 1/4)
+  third_quarter = int(saggital_slices * 3/4)
+
+  # Use only the middle 1/2 of slices in the sagittal (z) direction
+  middle_half = postct_array[:, :, np.s_[first_quarter:third_quarter]]
+  middle_half_num = middle_half.shape[2]
+
+  return(middle_half, middle_half_num)
+
+def xySlope(start_crd, end_crd, z):
+  xSlope = (end_crd[0] - start_crd[0]) / z
+  ySlope = (end_crd[1] - start_crd[1]) / z
+  return(xSlope, ySlope)
+
+
+def endPointTraverse(xPos, yPos, xslope, yslope, numZ, ct_middle_array, ct_middle_num):
+  if numZ == 0:
+    return 0
+  newX = xPos + xslope
+  newY = yPos + yslope
+
+  # Get updated value through traversing next slice
+  current_pos = ct_middle_array[math.floor(yPos)][math.floor(xPos)][ct_middle_num - numZ]
+  traversed_value = current_pos + endPointTraverse(newX, newY, xslope, yslope, numZ - 1, ct_middle_array, ct_middle_num)
+
+  return(traversed_value)
+
+def createNewImage(start_pos, distance_first, postct_array):
+  # Run function to load CT as array and get middle half of CT in z-direction
+  ct_middle_array, ct_middle_num = get_middle_half(postct_array)
+
+  numY, numX, numZ = ct_middle_array.shape
+  new2DMatrix = np.array([])
+
+  for y in range(numY):
+    newRow = np.array([])
+
+    #get updated value in row
+    for x in range(numX):
+      xSlope, ySlope = xySlope(start_pos, (x, y), distance_first + numZ)
+      #adjust x and y to coordinate at first slice
+      startXAtFirstSlice = start_pos[0] + (xSlope * distance_first)
+      startYAtFirstSlice = start_pos[1] + (ySlope * distance_first)
+
+      traverse_results = endPointTraverse(startXAtFirstSlice, startYAtFirstSlice, xSlope, ySlope, numZ, ct_middle_array, ct_middle_num)
+      newRow = np.append(newRow, [traverse_results])
+
+    #add row to matrix
+    if(new2DMatrix.size == 0):
+      new2DMatrix = np.array([newRow])
+    else:
+      new2DMatrix = np.append(new2DMatrix, [newRow], axis = 0)
+
+  # Rotate projected_2D image array by 90 degrees clockwise
+  rot2d_Matrix = np.rot90(new2DMatrix, axes = (1,0))
+  return(rot2d_Matrix)
+
+def project3D_CT(postct_array):
+  start_position = (128, 128)  # starting from the center minimizes distortion
+  distFromImg = 256 * 1.5
+
+  rotated_ct_matrix = createNewImage(start_position, distFromImg, postct_array)
+
+  return rotated_ct_matrix
+
+def transform(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
+    """
+    Transform the fluoro image based on CT and fluoro landmarks
+    
     """
 
-    # 1. Proprocess CT image(s) and pins coordinates
+    # Preprocess CT image(s) and pins coordinates
 
     # Subtract 340 from x direction to cut off GUI section of fluoro images
     coords_new = []
@@ -38,6 +91,8 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
     pins_fl = np.array(coords_new)
 
     fluorot = np.delete(fluoro, range(0,340),axis=1)
+    
+    # Subtract 340 from x direction for electrode coordinates
     
     coords_new = []
     for i in range(len(coords_2d)):
@@ -76,49 +131,35 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
 
     pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[np.rint((pins_fl[2,0]+pins_fl[3,0])/2),np.rint((pins_fl[2,1]+pins_fl[3,1])/2)]])
 
-
-    # Define the CT pins and DBS lead coordinates from inputs
-    pins_ct = np.array([pins_ct[1],pins_ct[3],pins_ct[4]])
-
-    # 1. Preprocess the CT images and pin/DBS lead coordinates to match fluoro images
+    # Preprocess the CT images and pin/DBS lead coordinates to match fluoro images
 
     # Find the scaling factor
     img_shape = (postct_data.shape[0], postct_data.shape[1])
     reshaped_img_shape = (fluorot.shape[0], fluorot.shape[1])
     scale = np.divide(reshaped_img_shape, img_shape)
-
-    sl_num = np.array([pins_ct[:,2]])
-    sl_resized = []
+    
+    # Apply the scaling factor
     pins_ct2 = []
     for i in range(len(pins_ct)):
-        # Transform CT images
-        sl = postct_data[:, :, int(sl_num[0,i])]
-        sl2 = cv2.resize(sl,[fluorot.shape[0],fluorot.shape[1]])
     
         CT_new = np.multiply([pins_ct[i,0], pins_ct[i,1]], scale)
         pins_ct2.append(CT_new)
 
-    sl_resized = np.array(sl_resized)
     pins_ct2 = np.array(pins_ct2)
 
-    # For CT DBS lead coordinate and fluoro DBS lead coordinate, move in the x- and y-axes to form the proper triangle for transformation
+    # 2. Find the transformation matrix from the 3 landmark coordinates, apply to fluoro image and resize
 
-    pins_fl = np.array([[pins_fl[0,0],pins_fl[0,1]],[pins_fl[1,0],pins_fl[1,1]],[pins_fl[2,0],pins_fl[2,1]-400]])
-    pins_ct2 = np.array([[pins_ct2[0,0]+220,pins_ct2[0,1]+420],[pins_ct2[1,0]+220,pins_ct2[1,1]+230],[pins_ct2[2,0]+320,pins_ct2[2,1]-80]])
-
-    # 2. Find the affine 2x3 transformation matrix from the 3 landmark coordinates, apply to fluoro image and resize
-
-    # Find 2x3 affine transformation matrix
+    # Find the transformation matrix
     rows, cols = fluorot.shape
     pins_fl = np.float32(pins_fl)
     pins_ct2 = np.float32(pins_ct2)
-    M = cv2.getAffineTransform(pins_fl, pins_ct2)
+    M, mask = cv2.estimateAffinePartial2D(pins_fl, pins_ct2)
 
-    # Perform 2x3 affine transformation to fluoroscopy image, resize image to match 256x256 CT image shape
+    # Perform the transformation to fluoroscopy image, resize image to match 256x256 CT image shape
     dst = cv2.warpAffine(fluorot, M, (rows, cols))
-    dst2 = cv2.resize(dst,[sl.shape[0],sl.shape[1]])
+    dst2 = cv2.resize(dst,[256,256])
     
-    # 3. Apply transformation matrix and resize to all fluoro electrode coordinates to register them to CT image space
+    # Apply transformation matrix and resize to all fluoro electrode coordinates to register them to CT image space
 
     # Find the scaling factor
     img_shape = (dst2.shape[1], dst2.shape[0])
@@ -137,6 +178,115 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d):
         coords.append(coord_new)
 
     coords = np.array(coords)
+    
+    return coords, dst2
+
+# Input the postct_data, pins_ct2, pins_fluoro, fluoro image, rotation degrees, electrode coordinates, 
+# and ground truth electrodes
+
+def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d, aligned_coords_gt):
+
+    # Define CT pins and CT pins image for rotation
+    pinsct2 = np.array([pins_ct[1],pins_ct[3],pins_ct[4]])
+    pins_image = np.zeros((postct_data.shape[0],postct_data.shape[1],postct_data.shape[2]))
+    for i in range(len(pinsct2)):
+        pins_image[pinsct2[i,0],pinsct2[i,1],pinsct2[i,2]] = 1
+
+    # Define rotations in 3D space as follows:
+    # (2,1) = rotation about the x-axis
+    # (1,0) = rotation about the y-axis
+    # (2,0) = rotation about the z-axis
+
+    # Perform grid search of all possible rotation combinations, apply the best combination as final result
+    euc_list = []
+    config_list = []
+    # x axis rotations
+    xlist = [0, 90]
+    for x in xlist:
+        postct_data2 = scipy.ndimage.rotate(postct_data,x,axes=(2,1))
+        pins_image2 = scipy.ndimage.rotate(pins_image,x,axes=(2,1))
+        # y axis rotations
+        ylist = [0]
+        for y in ylist:
+            postct_data3 = scipy.ndimage.rotate(postct_data2,y,axes=(1,0))
+            pins_image3 = scipy.ndimage.rotate(pins_image2,y,axes=(1,0))
+            # z axis rotations
+            zlist = [0]
+            for z in zlist:
+                postct_data4 = scipy.ndimage.rotate(postct_data3,z,axes=(2,0))
+                pins_image4 = scipy.ndimage.rotate(pins_image3,z,axes=(2,0))
+                
+                
+                # Project to 2D
+                projected_ct = project3D_CT(postct_data4)
+                projected_pin_image = project3D_CT(pins_image4)
+
+                # Retreive projected landmarks
+                threshold, upper, lower = 0.1, 1, 0
+                projected_pin_image = np.where(projected_pin_image>threshold, upper, lower)
+                new_ct_pins = np.where(projected_pin_image == 1)
+
+                new_ct_pins = np.concatenate(new_ct_pins)
+                
+                # Perform the transformation only if 3 landmarks were retrieved
+                try:
+                    # Define the correct order for the retreived CT landmarks
+                    new_ct_pins = np.array([[new_ct_pins[5],new_ct_pins[2]],[new_ct_pins[3],new_ct_pins[0]],[new_ct_pins[4],new_ct_pins[1]]])
+
+                    # Perform the transformation
+                    coords, dst2 = transform(postct_data, fluoro, pins_fl, new_ct_pins, coords_2d)
+                    
+                    # Update configuration list
+                    configuration = np.array([x,y,z])
+                    config_list.append(configuration)
+                    
+                    # Calculate the Euclidean distance to ground truth coordinates
+                    euc_dist = euclidean_distance_coords(coords, aligned_coords_gt)
+                    euc_list.append(euc_dist)
+                except:
+                    # Update configuration list
+                    configuration = np.array([x,y,z])
+                    config_list.append(configuration)
+                    
+                    # Update Euclidean distance list
+                    euc_dist = 10000
+                    euc_list.append(euc_dist)
+
+    # Find minimum Euclidean distance value and corresponding alignment configuration
+    min_euc = np.argmin(np.array(euc_list))
+    best_config = config_list[min_euc]
+
+    # Apply the best configuration of rotations
+
+    # x axis rotation
+    postct_data2 = scipy.ndimage.rotate(postct_data,best_config[0],axes=(2,1))
+    pins_image2 = scipy.ndimage.rotate(pins_image,best_config[0],axes=(2,1))
+
+    # y axis rotation
+    postct_data3 = scipy.ndimage.rotate(postct_data2,best_config[1],axes=(1,0))
+    pins_image3 = scipy.ndimage.rotate(pins_image2,best_config[1],axes=(1,0))
+
+    # z axis rotations
+    postct_data4 = scipy.ndimage.rotate(postct_data3,best_config[2],axes=(2,0))
+    pins_image4 = scipy.ndimage.rotate(pins_image3,best_config[2],axes=(2,0))
+                        
+    # Project to 2D
+    projected_ct = project3D_CT(postct_data4)
+    projected_pin_image = project3D_CT(pins_image4)
+
+    # Retreive projected landmarks
+    threshold, upper, lower = 0.1, 1, 0
+    projected_pin_image = np.where(projected_pin_image>threshold, upper, lower)
+    new_ct_pins = np.where(projected_pin_image == 1)
+    new_ct_pins = np.concatenate(new_ct_pins)
+                
+    # Perform the transformation only if 3 landmarks were retrieved
+
+    # Define the correct order for the retreived CT landmarks
+    new_ct_pins = np.array([[new_ct_pins[5],new_ct_pins[2]],[new_ct_pins[3],new_ct_pins[0]],[new_ct_pins[4],new_ct_pins[1]]])
+
+    # Perform the transformation
+    coords, dst2 = transform(postct_data, fluoro, pins_fl, new_ct_pins, coords_2d)
 
     print('fluoro_ct_alignment.py successfully executed.')
     return coords
