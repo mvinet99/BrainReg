@@ -3,6 +3,7 @@
 from ct_segmentation import ct_get_landmarks
 from hull_projection import project_to_3d
 from fluoro_segmentation import fluoro_get_coordinates
+import fluoro_ct_alignment
 from fluoro_ct_alignment import project_to_2d
 import nibabel as nib
 import numpy as np
@@ -10,6 +11,7 @@ import cv2
 import scipy.io
 import os
 import imageio
+import math
 import circle_fit as cf
 from utils import euclidean_distance_coords
 from tabulate import tabulate
@@ -17,7 +19,7 @@ import pandas as pd
 from tqdm import tqdm
 
 df = pd.read_csv("split.csv")
-df = df[df['split'] == 'test']
+df = df[df['split'] == 'train']
 
 acc = []
 cnt=len(df.ids)
@@ -47,8 +49,12 @@ for SAMPLE_NAME in  tqdm(df.ids):
 		fluoro = imageio.imread(FLUORO_FILE_NAME)
 		#fluoro = cv2.cvtColor(fluoro, cv2.COLOR_BGR2GRAY)
 		ground_truth = np.load(GT_NAME) 
-		 
-   
+
+		#Load groud truth 2D aligned electrode coordinates
+		new_T = np.hstack((ground_truth, np.ones((ground_truth.shape[0],1))))
+		Transformed = new_T @ np.linalg.inv(Tmatrix)
+		aligned_coords_gt = np.delete(Transformed, obj=2, axis=1)
+		aligned_coords_gt = np.delete(aligned_coords_gt, obj=2, axis=1)
    
 		# SEGMENT FROM FLUORO
 		# Run first component script
@@ -72,7 +78,7 @@ for SAMPLE_NAME in  tqdm(df.ids):
 		pins3d = coords3d_dic['pin']
 		lead_ct = coords3d_dic['lead']
 		pins_ct = np.concatenate((pins3d,lead_ct),axis=0)
-		aligned_coords = project_to_2d(postct_data,fluoro2,pins_fl,pins_ct,coords_2d)
+		aligned_coords = project_to_2d(postct_data,fluoro2,pins_fl,pins_ct,coords_2d, aligned_coords_gt)
 
 		# PROJECT
 		predictions = project_to_3d(aligned_coords, points_hull, Tmatrix)
