@@ -201,17 +201,17 @@ def project_to_2d(postct_data, fluoro, pins_fl, pins_ct, coords_2d, aligned_coor
     euc_list = []
     config_list = []
     # x axis rotations
-    xlist = [0, 90]
+    xlist = [0, 90, 180, 270]
     for x in xlist:
         postct_data2 = scipy.ndimage.rotate(postct_data,x,axes=(2,1))
         pins_image2 = scipy.ndimage.rotate(pins_image,x,axes=(2,1))
         # y axis rotations
-        ylist = [0]
+        ylist = [0, 90, 180, 270]
         for y in ylist:
             postct_data3 = scipy.ndimage.rotate(postct_data2,y,axes=(1,0))
             pins_image3 = scipy.ndimage.rotate(pins_image2,y,axes=(1,0))
             # z axis rotations
-            zlist = [0]
+            zlist = [0, 90, 180, 270]
             for z in zlist:
                 postct_data4 = scipy.ndimage.rotate(postct_data3,z,axes=(2,0))
                 pins_image4 = scipy.ndimage.rotate(pins_image3,z,axes=(2,0))
