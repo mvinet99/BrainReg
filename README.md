@@ -13,9 +13,7 @@ Download the 'data.zip' from the Box drive, unzip, and place it in the same fold
 
 ## Usage:
 
-Interface.ipynb is the script the user will use to run the project and have outputs displayed.
-
-Pipeline.ipynb simulates steps of the pipeline.
+evaluate.py is the script the user will use to run the project and have outputs displayed.
 
 DataPreview.ipynb visualizes all the data we have available.
 
