@@ -46,7 +46,10 @@ def get_pins(nifti_data):
 	point_cloud = np.array([0,0,0])		
 	for i in range(nifti_data.shape[1]):
 		img = nifti_data[:,i,:]
-		img = (img - np.min(img)) / (np.max(img) - np.min(img))
+		norm_term = (np.max(img) - np.min(img))
+		if(norm_term == 0):
+			norm_term = 1.0
+		img = (img - np.min(img)) / norm_term
 		# get their coordinates and attach i
 		white_pixels = img > 0.98
 		white_pixel_coords = np.array(np.where(white_pixels==1)).transpose(1,0)
@@ -92,7 +95,10 @@ def get_lead(nifti_data):
 	point_cloud = np.array([0,0,0])
 	for i in range(nifti_data.shape[1]):
 		img = nifti_data[:,i,:]
-		img = (img - np.min(img)) / (np.max(img) - np.min(img))
+		norm_term = (np.max(img) - np.min(img))
+		if(norm_term == 0):
+			norm_term = 1.0
+		img = (img - np.min(img)) / norm_term
 		# get their coordinates and attach i
 		white_pixels = (img==1.0)
 		white_pixel_coords = np.array(np.where(white_pixels == 1)).transpose(1,0)

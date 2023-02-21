@@ -147,6 +147,7 @@ def fluoro_get_coordinates(fluoro):
                 arc_lengths_final.append(arc_lengths[i])
 
         # Fill in holes
+        new_electrodes = []
         if len(conf_coords) < num_electrodes:
             zipped = list(zip(arc_lengths_final,conf_coords))
             zipped.sort()
@@ -205,8 +206,9 @@ def fluoro_get_coordinates(fluoro):
                     sorted_coords = sorted_coords+left_predict
                     sorted_arcs = sorted_arcs+[right_predict_arc]
                     edge_coords.append(right_predict)
+            all_ECoG_Coords = all_ECoG_Coords + edge_coords
                 
-        all_ECoG_Coords = all_ECoG_Coords + edge_coords
+        
 
     # ---------- Find DBS lead
 
